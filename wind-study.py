@@ -8,7 +8,7 @@ st.title("Contour Plot with Interpolation and Crosshairs")
 
 # Read the CSV file from the local path.
 # Make sure the file "chart-data/NA.3-contour_data.csv" is in your repository.
-df = pd.read_csv(chart-data/NA.3-contour_data.csv)
+df = pd.read_excel("NA.3-contour_data.xlsx")
 
 # Display a preview of the data
 st.write("Data preview:", df.head())
