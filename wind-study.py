@@ -114,7 +114,7 @@ if len(all_columns) >= 3:
     # Create the figure
     fig = go.Figure()
     
-    # Add the contour plot with smooth color filling
+    # Add the contour plot with smooth color filling - simplified colorbar
     fig.add_trace(go.Contour(
         x=x_grid,
         y=y_grid,
@@ -125,17 +125,10 @@ if len(all_columns) >= 3:
             start=contour_start,
             end=contour_end,
             size=contour_step,
-            labelfont=dict(size=10, color='white')
         ),
         colorscale='Viridis',
         line=dict(width=1),
-        colorbar=dict(
-            title='Contour Value',
-            titleside='right',
-            titlefont=dict(size=14),
-            tickfont=dict(size=12),
-            len=0.9,
-        )
+        colorbar=dict(title='Contour Value')
     ))
     
     # Add contour lines to ensure they are visible
@@ -195,7 +188,6 @@ if len(all_columns) >= 3:
             showgrid=True,
             gridcolor='rgba(200,200,200,0.2)'
         ),
-        margin=dict(l=40, r=40, t=40, b=40),
         height=700,
         plot_bgcolor='rgba(240,240,240,0.95)'
     )
