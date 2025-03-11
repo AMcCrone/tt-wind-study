@@ -94,7 +94,6 @@ fig.add_trace(go.Contour(
     line=dict(width=1),
     colorbar=dict(
         title='Contour Value',
-        titleside='right',
         titlefont=dict(size=14),
         tickfont=dict(size=12),
         len=0.9,
