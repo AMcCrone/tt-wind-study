@@ -6,10 +6,12 @@ from scipy.interpolate import griddata
 
 st.title("Contour Plot with Interpolation and Crosshairs")
 
-# Read the CSV data from your GitHub repo.
-# Replace 'your-username/your-repo' with your actual repository details.
-NA3_csv = "chart-data/NA.3-contour_data.csv"
-df = pd.read_csv(NA3_csv)
+# Read the CSV file from the local path.
+# Make sure the file "chart-data/NA.3-contour_data.csv" is in your repository.
+df = pd.read_csv("chart-data/NA.3-contour_data.csv")
+
+# Display a preview of the data
+st.write("Data preview:", df.head())
 
 # The CSV file is assumed to have columns: "X", "Y", "Z"
 # Where:
