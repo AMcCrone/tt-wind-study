@@ -104,7 +104,7 @@ y_query = st.number_input("Enter y coordinate (2 to 200):", min_value=2.0, max_v
 
 # Interpolate the contour value at the query point.
 query_point = np.array([[x_query, y_query]])
-interp_val = griddata(interp_points, interp_values, query_point, method='linear')[0]
+interp_val = griddata(interp_points, interp_values, query_point, method='cubic')[0]
 
 # Add crosshairs at the query coordinate.
 fig.add_shape(
