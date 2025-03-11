@@ -32,7 +32,7 @@ df = pd.read_excel("NA.3-contour_data.xlsx")
 st.write("Data preview:", df.head())
 
 # Function to resample points along a contour line based on cumulative distance.
-def resample_contour_line(x, y, n_points=200):
+def resample_contour_line(x, y, n_points=1000):
     # Stack x and y into an array of points.
     pts = np.column_stack((x, y))
     # Compute Euclidean distances between consecutive points.
