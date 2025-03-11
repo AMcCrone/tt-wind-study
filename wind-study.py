@@ -268,7 +268,7 @@ with st.sidebar:
     # GitHub data URL
     data_url = st.text_input(
         "GitHub Data URL",
-        value="contour_data"
+        value="contour_data.xlsx"
     )
     
     # Load the data and get sheet names
