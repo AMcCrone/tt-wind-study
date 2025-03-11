@@ -55,10 +55,10 @@ fig = go.Figure(data=go.Contour(
     z=Zgrid,
     colorscale='Viridis',
     contours=dict(
-        showlines=True,
+        showlines=False,
         start=df['Z'].min(),
         end=df['Z'].max(),
-        size=0.001  # Adjust the contour interval as needed.
+        size=0.01  # Adjust the contour interval as needed.
     ),
     colorbar=dict(title="Contour Level")
 ))
