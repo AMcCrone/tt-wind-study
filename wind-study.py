@@ -7,7 +7,7 @@ from scipy.interpolate import griddata
 st.title("Contour Plot with Interactive Crosshairs")
 
 # Load data from GitHub
-data_url = "chart-data/NA.3-contour_data.xlsx"
+data_url = "NA.3-contour_data.xlsx"
 
 @st.cache_data
 def load_data(url):
@@ -94,6 +94,7 @@ fig.add_trace(go.Contour(
     line=dict(width=1),
     colorbar=dict(
         title='Contour Value',
+        titleside='right',
         titlefont=dict(size=14),
         tickfont=dict(size=12),
         len=0.9,
