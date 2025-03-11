@@ -37,7 +37,8 @@ st.write("Data preview:", df.head())
 #   - "Y" is the y-coordinate,
 #   - "Z" is the contour level (ranging from 0.75 to 1.70).
 
-# Create a grid covering the x and y ranges (logarithmic axes: x from 0.1 to 100, y from 2 to 200)
+# Create a grid covering the x and y ranges (logarithmic axes):
+# x: from 0.1 to 100, y: from 2 to 200.
 xi = np.logspace(np.log10(0.1), np.log10(100), 200)
 yi = np.logspace(np.log10(2), np.log10(200), 200)
 Xgrid, Ygrid = np.meshgrid(xi, yi)
@@ -57,12 +58,29 @@ fig = go.Figure(data=go.Contour(
         showlines=True,
         start=df['Z'].min(),
         end=df['Z'].max(),
-        size=0.05  # Adjust this interval if needed
+        size=0.05  # Adjust the contour interval as needed.
     ),
     colorbar=dict(title="Contour Level")
 ))
 
-# Create Streamlit number inputs for the x and y query coordinates.
+# Overlay raw contour lines from the CSV:
+# For each unique Z value, group the data and join the points into a line.
+unique_z = sorted(df['Z'].unique())
+for z_val in unique_z:
+    # Get the points corresponding to this contour.
+    group = df[df['Z'] == z_val]
+    # Optionally, sort the points. Here we assume sorting by X produces the correct order.
+    group_sorted = group.sort_values(by='X')
+    fig.add_trace(go.Scatter(
+        x=group_sorted['X'],
+        y=group_sorted['Y'],
+        mode='lines',
+        name=f"Z = {z_val}",
+        line=dict(color='black', width=2),
+        showlegend=False  # Set to True if you wish to display legends.
+    ))
+
+# Create Streamlit number inputs for the query (x, y) coordinate.
 x_query = st.number_input("Enter x coordinate (0.1 to 100):", min_value=0.1, max_value=100.0, value=10.0, step=0.1, format="%.2f")
 y_query = st.number_input("Enter y coordinate (2 to 200):", min_value=2.0, max_value=200.0, value=50.0, step=0.1, format="%.2f")
 
@@ -84,7 +102,7 @@ fig.add_shape(
     line=dict(color="black", dash="dash")
 )
 
-# Add a marker with a label at the query point showing the interpolated contour level.
+# Add a marker at the query point with a label displaying the interpolated contour level.
 fig.add_trace(go.Scatter(
     x=[x_query],
     y=[y_query],
@@ -98,7 +116,7 @@ fig.add_trace(go.Scatter(
 fig.update_xaxes(type="log", title="X")
 fig.update_yaxes(type="log", title="Y")
 fig.update_layout(
-    title="Contour Plot with Smoothed Gradient, Interpolated Value, and Crosshairs",
+    title="Contour Plot with Raw Contour Lines, Gradient, Interpolation, and Crosshairs",
     hovermode="closest"
 )
 
