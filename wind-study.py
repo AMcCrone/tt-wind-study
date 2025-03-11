@@ -73,7 +73,7 @@ yi = np.logspace(np.log10(2), np.log10(200), 300)
 Xgrid, Ygrid = np.meshgrid(xi, yi)
 
 # Interpolate the contour values onto the grid.
-Zgrid = griddata(interp_points, interp_values, (Xgrid, Ygrid), method='linear')
+Zgrid = griddata(interp_points, interp_values, (Xgrid, Ygrid), method='cubic')
 
 # Create a Plotly contour plot showing the gradient.
 fig = go.Figure(data=go.Contour(
