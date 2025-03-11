@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata, interp1d
 
 PASSWORD = st.secrets["password"]
 
@@ -31,64 +31,82 @@ df = pd.read_excel("NA.3-contour_data.xlsx")
 # Display a preview of the data
 st.write("Data preview:", df.head())
 
-# The CSV file is assumed to have columns: "X", "Y", "Z"
-# Where:
-#   - "X" is the x-coordinate,
-#   - "Y" is the y-coordinate,
-#   - "Z" is the contour level (ranging from 0.75 to 1.70).
+# Function to resample points along a contour line based on cumulative distance.
+def resample_contour_line(x, y, n_points=200):
+    # Stack x and y into an array of points.
+    pts = np.column_stack((x, y))
+    # Compute Euclidean distances between consecutive points.
+    dists = np.sqrt(np.sum(np.diff(pts, axis=0)**2, axis=1))
+    # Cumulative distance along the line.
+    cum_dist = np.concatenate(([0], np.cumsum(dists)))
+    # Create new equally spaced distances along the line.
+    new_dist = np.linspace(0, cum_dist[-1], n_points)
+    # Create interpolation functions for x and y over the cumulative distance.
+    fx = interp1d(cum_dist, x, kind='linear')
+    fy = interp1d(cum_dist, y, kind='linear')
+    return fx(new_dist), fy(new_dist)
 
-# Create a grid covering the x and y ranges (logarithmic axes):
-# x: from 0.1 to 100, y: from 2 to 200.
-xi = np.logspace(np.log10(0.1), np.log10(100), 200)
-yi = np.logspace(np.log10(2), np.log10(200), 200)
+# For each unique contour level, resample the line to generate additional points.
+unique_z = sorted(df['Z'].unique())
+resampled_points = []
+for z_val in unique_z:
+    # Extract points for the current contour.
+    group = df[df['Z'] == z_val]
+    # For robustness, sort the points by their cumulative distance.
+    # Here we assume the points are roughly in order;
+    # if not, additional ordering logic may be required.
+    x_vals = group['X'].values
+    y_vals = group['Y'].values
+    new_x, new_y = resample_contour_line(x_vals, y_vals, n_points=200)
+    temp_df = pd.DataFrame({'X': new_x, 'Y': new_y, 'Z': z_val})
+    resampled_points.append(temp_df)
+    
+resampled_df = pd.concat(resampled_points, ignore_index=True)
+
+# Use the resampled points for interpolation.
+interp_points = resampled_df[['X', 'Y']].values
+interp_values = resampled_df['Z'].values
+
+# Create a grid covering the x and y ranges on a logarithmic scale.
+xi = np.logspace(np.log10(0.1), np.log10(100), 300)
+yi = np.logspace(np.log10(2), np.log10(200), 300)
 Xgrid, Ygrid = np.meshgrid(xi, yi)
 
-# Interpolate the scattered contour data onto the grid.
-points = df[['X', 'Y']].values
-values = df['Z'].values
-Zgrid = griddata(points, values, (Xgrid, Ygrid), method='linear')
+# Interpolate the contour values onto the grid.
+Zgrid = griddata(interp_points, interp_values, (Xgrid, Ygrid), method='linear')
 
-# Create a Plotly contour plot with smooth gradient fill.
+# Create a Plotly contour plot showing the gradient.
 fig = go.Figure(data=go.Contour(
     x=xi,
     y=yi,
     z=Zgrid,
     colorscale='Viridis',
     contours=dict(
-        showlines=False,
-        start=df['Z'].min(),
-        end=df['Z'].max(),
-        size=0.01  # Adjust the contour interval as needed.
+        showlines=False  # We overlay raw contour lines below.
     ),
     colorbar=dict(title="Contour Level")
 ))
 
-# Overlay raw contour lines from the CSV:
-# For each unique Z value, group the data and join the points into a line.
-unique_z = sorted(df['Z'].unique())
+# Overlay the raw (resampled) contour lines.
 for z_val in unique_z:
-    # Get the points corresponding to this contour.
-    group = df[df['Z'] == z_val]
-    # Optionally, sort the points. Here we assume sorting by X produces the correct order.
-    group_sorted = group.sort_values(by='X')
+    group = resampled_df[resampled_df['Z'] == z_val]
     fig.add_trace(go.Scatter(
-        x=group_sorted['X'],
-        y=group_sorted['Y'],
+        x=group['X'],
+        y=group['Y'],
         mode='lines',
-        name=f"Z = {z_val}",
-        line=dict(color='black', width=2),
-        showlegend=False  # Set to True if you wish to display legends.
+        line=dict(color='black', width=1),
+        showlegend=False
     ))
 
-# Create Streamlit number inputs for the query (x, y) coordinate.
+# Create interactive query inputs for (x, y).
 x_query = st.number_input("Enter x coordinate (0.1 to 100):", min_value=0.1, max_value=100.0, value=10.0, step=0.1, format="%.2f")
 y_query = st.number_input("Enter y coordinate (2 to 200):", min_value=2.0, max_value=200.0, value=50.0, step=0.1, format="%.2f")
 
-# Interpolate the contour value at the (x_query, y_query) coordinate.
+# Interpolate the contour value at the query point.
 query_point = np.array([[x_query, y_query]])
-interp_val = griddata(points, values, query_point, method='linear')[0]
+interp_val = griddata(interp_points, interp_values, query_point, method='linear')[0]
 
-# Add crosshairs at the query point (vertical and horizontal dashed lines).
+# Add crosshairs at the query coordinate.
 fig.add_shape(
     type="line",
     x0=x_query, x1=x_query,
@@ -102,7 +120,7 @@ fig.add_shape(
     line=dict(color="black", dash="dash")
 )
 
-# Add a marker at the query point with a label displaying the interpolated contour level.
+# Add a marker at the query point with the interpolated contour value.
 fig.add_trace(go.Scatter(
     x=[x_query],
     y=[y_query],
@@ -112,13 +130,12 @@ fig.add_trace(go.Scatter(
     textposition="top center"
 ))
 
-# Set the axes to logarithmic scale and add axis titles.
+# Set axes to logarithmic scale and add titles.
 fig.update_xaxes(type="log", title="X")
 fig.update_yaxes(type="log", title="Y")
 fig.update_layout(
-    title="Contour Plot with Raw Contour Lines, Gradient, Interpolation, and Crosshairs",
+    title="Contour Gradient Using Resampled Contour Lines",
     hovermode="closest"
 )
 
-# Display the Plotly figure in the Streamlit app.
 st.plotly_chart(fig, use_container_width=True)
