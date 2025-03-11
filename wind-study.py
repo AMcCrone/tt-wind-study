@@ -11,8 +11,18 @@ st.title("Contour Plot with Interpolation and Crosshairs")
 NA3_csv = "chart-data/NA.3-contour_data.csv"
 df = pd.read_csv(NA3_csv)
 
-# The CSV file is assumed to have columns: "dataset", "x", "y"
-# Here "dataset" corresponds to the contour level (ranging from 0.75 to 1.70).
+# Debug: print out the CSV columns to verify their names.
+st.write("CSV Columns:", df.columns)
+
+# Set the expected column names. Update these if your CSV uses different names.
+x_column = 'x'          # Change this if your CSV has a different name, e.g., 'x_coord'
+y_column = 'y'          # Change this if your CSV has a different name, e.g., 'y_coord'
+dataset_column = 'dataset'  # This column holds the contour level value (ranging from 0.75 to 1.70)
+
+# Extract the x, y, and dataset (contour level) values.
+# If your CSV uses different column names, update the variables above accordingly.
+points = df[[x_column, y_column]].values
+values = df[dataset_column].values
 
 # Create a grid covering the x and y ranges (logarithmic axes: x from 0.1 to 100, y from 2 to 200)
 xi = np.logspace(np.log10(0.1), np.log10(100), 200)
