@@ -217,7 +217,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             x=[x_input],
             y=[y_input],
             mode='markers',
-            marker=dict(color='#DB451D', size=10, symbol='c'),
+            marker=dict(color='#DB451D', size=10, symbol='circle'),
             showlegend=False
         ))
     
