@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from scipy.interpolate import griddata
+import io
+import os
 
 # Set page configuration
 st.set_page_config(page_title="Contour Analysis Tool", layout="wide")
@@ -32,27 +34,47 @@ if not st.session_state["authenticated"]:
 st.title("Contour Analysis Tool")
 
 # -----------------------
-# Configuration for all plots
+# Configuration for all plots based on the provided table
 # -----------------------
 
-# Define axis configuration for each plot
+# Define axis configuration and contour ranges for each plot
 plot_configs = {
-    "NA.3": {"x_min": 0.1, "x_max": 100, "y_min": 2, "y_max": 200, "x_name": "distance (m)"},
-    "NA.4": {"x_min": 0.1, "x_max": 20, "y_min": 2, "y_max": 200, "x_name": "spread length (m)"},
-    "NA.5": {"x_min": 0.1, "x_max": 100, "y_min": 2, "y_max": 200, "x_name": "radius (m)"},
-    "NA.6": {"x_min": 0.1, "x_max": 50, "y_min": 2, "y_max": 200, "x_name": "parameter X (m)"},
-    "NA.7": {"x_min": 0.1, "x_max": 30, "y_min": 2, "y_max": 200, "x_name": "parameter Y (m)"},
-    "NA.8": {"x_min": 0.1, "x_max": 40, "y_min": 2, "y_max": 200, "x_name": "parameter Z (m)"}
-}
-
-# Define contour ranges for each plot based on the sheet data
-contour_ranges = {
-    "NA.3": {"start": 0.75, "end": 1.70, "step": 0.05},
-    "NA.4": {"start": 0.58, "end": 1.00, "step": 0.05},
-    "NA.5": {"start": 0.65, "end": 1.20, "step": 0.05},
-    "NA.6": {"start": 0.50, "end": 1.50, "step": 0.05},
-    "NA.7": {"start": 0.60, "end": 1.40, "step": 0.05},
-    "NA.8": {"start": 0.70, "end": 1.30, "step": 0.05}
+    "NA.3": {
+        "x_min": 0.1, "x_max": 100, 
+        "y_min": 2, "y_max": 200, 
+        "x_name": "distance (m)",
+        "contour_start": 0.75, "contour_end": 1.7, "contour_step": 0.05
+    },
+    "NA.4": {
+        "x_min": 0.1, "x_max": 20, 
+        "y_min": 2, "y_max": 200, 
+        "x_name": "spread length (m)",
+        "contour_start": 0.56, "contour_end": 1.0, "contour_step": 0.02
+    },
+    "NA.5": {
+        "x_min": 0.1, "x_max": 100, 
+        "y_min": 2, "y_max": 200, 
+        "x_name": "radius (m)",
+        "contour_start": 0.07, "contour_end": 0.21, "contour_step": 0.01
+    },
+    "NA.6": {
+        "x_min": 0.1, "x_max": 20, 
+        "y_min": 2, "y_max": 200, 
+        "x_name": "parameter X (m)",
+        "contour_start": 1.0, "contour_end": 1.8, "contour_step": 0.05
+    },
+    "NA.7": {
+        "x_min": 0.1, "x_max": 100, 
+        "y_min": 2, "y_max": 200, 
+        "x_name": "parameter Y (m)",
+        "contour_start": 1.5, "contour_end": 4.2, "contour_step": 0.1
+    },
+    "NA.8": {
+        "x_min": 0.1, "x_max": 20, 
+        "y_min": 2, "y_max": 200, 
+        "x_name": "parameter Z (m)",
+        "contour_start": 0.60, "contour_end": 1.0, "contour_step": 0.02
+    }
 }
 
 # Common y-axis name
@@ -63,56 +85,59 @@ y_axis_name = "z-h_dis (m)"
 # -----------------------
 @st.cache_data
 def load_data():
-    """Load sample data for all plots with correct ranges for each sheet."""
+    """Load data for each sheet with appropriate X, Y, Z columns."""
     dataframes = {}
     
-    # Sample data for each sheet
-    for sheet in plot_configs.keys():
-        config = plot_configs[sheet]
-        contour_range = contour_ranges[sheet]
+    for sheet_name, config in plot_configs.items():
+        # Generate synthetic data that matches the expected contour ranges
         x_min, x_max = config["x_min"], config["x_max"]
         y_min, y_max = config["y_min"], config["y_max"]
+        contour_start, contour_end = config["contour_start"], config["contour_end"]
         
-        # Generate logarithmically spaced points for both axes
-        num_points = 100
-        x_vals = np.logspace(np.log10(x_min), np.log10(x_max), num_points)
-        y_vals = np.logspace(np.log10(y_min), np.log10(y_max), num_points)
-        
-        # Create grid of points
-        x_grid, y_grid = np.meshgrid(x_vals, y_vals)
-        x_flat = x_grid.flatten()
-        y_flat = y_grid.flatten()
-        
-        # Generate z values within the specified contour range for each sheet
-        z_min, z_max = contour_range["start"], contour_range["end"]
-        
-        if sheet == "NA.3":
-            # Range: 0.75 to 1.70
-            z_flat = z_min + (z_max - z_min) * 0.5 * (1 + np.sin(np.log(x_flat)/2) * np.cos(np.log(y_flat)/2))
-        elif sheet == "NA.4":
-            # Range: 0.58 to 1.00
-            z_flat = z_min + (z_max - z_min) * 0.5 * (1 + np.sin(np.log(x_flat)) * np.cos(np.log(y_flat)/3))
-        elif sheet == "NA.5":
-            # Range: 0.65 to 1.20
-            z_flat = z_min + (z_max - z_min) * 0.5 * (1 + np.sin(np.log(x_flat)/3) * np.cos(np.log(y_flat)/4))
-        elif sheet in ["NA.6", "NA.7", "NA.8"]:
-            # Empty dataframes for other sheets
-            dataframes[sheet] = pd.DataFrame({
+        # For sheets with data
+        if sheet_name in ["NA.3", "NA.4", "NA.5"]:
+            # Create a grid of logarithmically spaced points
+            num_x, num_y = 50, 50  # Adjust as needed for data density
+            x_vals = np.logspace(np.log10(x_min), np.log10(x_max), num_x)
+            y_vals = np.logspace(np.log10(y_min), np.log10(y_max), num_y)
+            
+            x_grid, y_grid = np.meshgrid(x_vals, y_vals)
+            x_flat = x_grid.flatten()
+            y_flat = y_grid.flatten()
+            
+            # Generate Z values appropriate for each sheet within their contour range
+            if sheet_name == "NA.3":
+                # Range: 0.75 to 1.7
+                z_flat = contour_start + (contour_end - contour_start) * (
+                    0.5 + 0.4 * np.sin(np.log10(x_flat) * 1.5) * np.cos(np.log10(y_flat) * 1.2)
+                )
+            elif sheet_name == "NA.4":
+                # Range: 0.56 to 1.0
+                z_flat = contour_start + (contour_end - contour_start) * (
+                    0.5 + 0.4 * np.sin(np.log10(x_flat) * 2.0) * np.cos(np.log10(y_flat) * 1.3)
+                )
+            elif sheet_name == "NA.5":
+                # Range: 0.07 to 0.21
+                z_flat = contour_start + (contour_end - contour_start) * (
+                    0.5 + 0.4 * np.sin(np.log10(x_flat) * 0.8) * np.cos(np.log10(y_flat) * 1.0)
+                )
+            
+            # Ensure values stay within the contour range
+            z_flat = np.clip(z_flat, contour_start, contour_end)
+            
+            # Create dataframe with X, Y, Z columns
+            dataframes[sheet_name] = pd.DataFrame({
+                'x': x_flat,
+                'y': y_flat,
+                'z': z_flat
+            })
+        else:
+            # Empty dataframe for sheets without data
+            dataframes[sheet_name] = pd.DataFrame({
                 'x': [],
                 'y': [],
                 'z': []
             })
-            continue
-        
-        # Ensure z values are within the expected range for each sheet
-        z_flat = np.clip(z_flat, z_min, z_max)
-        
-        # Create dataframe
-        dataframes[sheet] = pd.DataFrame({
-            'x': x_flat,
-            'y': y_flat,
-            'z': z_flat
-        })
     
     return dataframes
 
@@ -122,10 +147,12 @@ def load_data():
 def create_contour_plot(df, sheet_name, x_input, y_input):
     """Create a contour plot with interactive crosshairs for a specific sheet."""
     config = plot_configs[sheet_name]
-    contour_range = contour_ranges[sheet_name]
     x_min, x_max = config["x_min"], config["x_max"]
     y_min, y_max = config["y_min"], config["y_max"]
     x_name = config["x_name"]
+    contour_start = config["contour_start"]
+    contour_end = config["contour_end"] 
+    contour_step = config["contour_step"]
     
     # Check if dataframe is empty
     if df.empty:
@@ -147,7 +174,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             height=400,
             margin=dict(l=50, r=50, t=50, b=50)
         )
-        return fig, None, contour_range
+        return fig, None
     
     # Create a dense grid for smooth interpolation
     grid_density = 200
@@ -178,11 +205,6 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
     if x_min <= x_input <= x_max and y_min <= y_input <= y_max:
         interpolated_z = get_interpolated_z(x_input, y_input)
     
-    # Use the predefined contour ranges for each sheet
-    contour_start = contour_range["start"]
-    contour_end = contour_range["end"]
-    contour_step = contour_range["step"]
-    
     # Create the figure
     fig = go.Figure()
     
@@ -197,14 +219,20 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             start=contour_start,
             end=contour_end,
             size=contour_step,
+            labelfont=dict(size=10, color='white')
         ),
         colorscale='Viridis',
-        opacity=0.85,  # Increased opacity
-        line=dict(width=0.5),  # Thin lines for the filled contours
-        colorbar=dict(title='Contour Value', thickness=20, len=0.9)
+        opacity=0.85,
+        line=dict(width=0.5),
+        colorbar=dict(
+            title='Contour Value', 
+            thickness=20, 
+            len=0.9,
+            tickformat='.2f' if contour_step >= 0.05 else '.3f'
+        )
     ))
     
-    # Add black contour lines with increased width
+    # Add black contour lines
     fig.add_trace(go.Contour(
         x=x_grid,
         y=y_grid,
@@ -217,7 +245,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             size=contour_step
         ),
         showscale=False,
-        line=dict(width=1.5, color='black')  # Thicker black contour lines
+        line=dict(width=1.5, color='black')  # Explicitly set black contour lines
     ))
     
     # Add crosshairs if x and y are within range
@@ -269,7 +297,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
         margin=dict(l=50, r=50, t=50, b=50)
     )
     
-    return fig, interpolated_z, contour_range
+    return fig, interpolated_z
 
 # -----------------------
 # Main Application Logic
@@ -300,6 +328,9 @@ with plot_container:
         config = plot_configs[sheet_name]
         x_min, x_max = config["x_min"], config["x_max"]
         x_name = config["x_name"]
+        contour_start = config["contour_start"]
+        contour_end = config["contour_end"]
+        contour_step = config["contour_step"]
         
         # X-coordinate selection for this specific plot
         x_input = st.slider(
@@ -318,7 +349,7 @@ with plot_container:
         col1, col2 = st.columns([3, 1])
         
         with col1:
-            fig, interpolated_z, contour_info = create_contour_plot(
+            fig, interpolated_z = create_contour_plot(
                 df, sheet_name, x_input, y_input
             )
             st.plotly_chart(fig, use_container_width=True)
@@ -328,12 +359,17 @@ with plot_container:
             st.write(f"Y: **{y_input:.1f}** {y_axis_name}")
             
             if interpolated_z is not None:
-                st.metric("Interpolated Value", f"{interpolated_z:.4f}")
-                st.write(f"Contour Range: {contour_info['start']:.2f} to {contour_info['end']:.2f}")
+                format_string = "%.4f" if contour_step < 0.05 else "%.2f"
+                st.metric(
+                    "Interpolated Value", 
+                    format_string % interpolated_z
+                )
+                st.write(f"Contour Range: {contour_start:.3f} to {contour_end:.3f}")
+                st.write(f"Contour Interval: {contour_step:.3f}")
             elif not df.empty:
                 st.warning("Coordinates outside data range")
             else:
-                st.info("No data available yet")
+                st.info("No data available for this sheet")
         
         # Add a separator between plots
         if i < 5:  # Don't add separator after the last plot
