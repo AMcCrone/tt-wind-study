@@ -182,7 +182,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
         colorscale='Viridis',
         opacity=0.6,
         line=dict(width=0.5),
-        showscale=False
+        showscale=False,
         colorbar=dict(
             title='Contour Value', 
             thickness=20, 
