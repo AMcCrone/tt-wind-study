@@ -274,7 +274,7 @@ with global_input_container:
     
     with col2:
         # Global x-coordinate for upwind plots (NA.3, NA.5, NA.7)
-        upwind_title = "Distance upwind to shoreline (km) " + "ℹ️"
+        upwind_title = "Distance upwind to shoreline (km)"
         x_upwind_input = st.number_input(
             upwind_title,
             value=10.0,
@@ -287,7 +287,7 @@ with global_input_container:
     
     with col3:
         # Global x-coordinate for town plots (NA.4, NA.6, NA.8)
-        town_title = "Distance inside town terrain (km) " + "ℹ️"
+        town_title = "Distance inside town terrain (km)"
         x_town_input = st.number_input(
             town_title,
             value=5.0,
