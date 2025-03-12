@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from scipy.interpolate import griddata
+import requests
 import io
-import os
 
 # Set page configuration
 st.set_page_config(page_title="Contour Analysis Tool", layout="wide")
@@ -89,28 +89,30 @@ y_axis_name = "z-h_dis (m)"
 # -----------------------
 @st.cache_data
 def load_data():
-    """Load data from Excel file for each sheet."""
+    """Load data from GitHub repository."""
     try:
-        # Define the file location - update this to your actual file path
-        # For development purposes, allow file upload
-        file_upload = st.sidebar.file_uploader("Upload Excel file", type=["xlsx", "xls"])
+        # GitHub file URL - adjust this to your actual repository URL
+        github_url = "https://raw.githubusercontent.com/amccrone/tt-wind-study/main/contour_data.xlsx"
         
-        if file_upload is not None:
-            file_path = file_upload
-        else:
-            # Default file path - update this to your actual file path
-            file_path = st.secrets.get("data_file_path", "data.xlsx")
-            # Check if file exists before attempting to load
-            if not os.path.exists(file_path) and not isinstance(file_path, io.BytesIO):
-                st.warning(f"Data file not found. Please upload your data file.")
+        # Download the file from GitHub
+        try:
+            response = requests.get(github_url)
+            if response.status_code == 200:
+                content = io.BytesIO(response.content)
+            else:
+                st.error(f"Failed to download data from GitHub. Status code: {response.status_code}")
                 return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
+                
+        except Exception as e:
+            st.error(f"Error downloading file from GitHub: {e}")
+            return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
         
         # Load all sheets from Excel file
         dataframes = {}
         
         try:
             # Try to read all sheets
-            excel_file = pd.ExcelFile(file_path)
+            excel_file = pd.ExcelFile(content)
             
             # Process each sheet in the configuration
             for sheet_name in plot_configs.keys():
@@ -120,7 +122,6 @@ def load_data():
                     
                     # Rename columns to x, y, z for standardization
                     # Assuming first column is x, second is y, third is z
-                    # Adjust this if your Excel structure is different
                     if len(df.columns) >= 3:
                         column_names = list(df.columns)
                         column_mapping = {
@@ -309,15 +310,21 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
     
     return fig, interpolated_z
 
-# Add file upload to sidebar
-st.sidebar.markdown("## Data Configuration")
-
 # -----------------------
 # Main Application Logic
 # -----------------------
 
+# Load status indicator
+with st.sidebar:
+    st.info("Loading data from GitHub repository...")
+    
 # Load all data
 datasets = load_data()
+
+with st.sidebar:
+    # Show data loading status
+    num_data_loaded = sum(1 for df in datasets.values() if not df.empty)
+    st.success(f"Data loaded: {num_data_loaded} sheets found with data")
 
 # Global y-coordinate selection (since y-axis is the same for all plots)
 y_input = st.slider(
@@ -395,11 +402,10 @@ st.markdown("---")
 st.info(
     """
     **How to Use:**
-    1. Upload your Excel data file using the sidebar uploader
-    2. Adjust the global Y-coordinate slider at the top to set the Y value for all plots
-    3. Set the X-coordinate for each individual plot using its slider
-    4. View the interpolated value for each plot
+    1. Adjust the global Y-coordinate slider at the top to set the Y value for all plots
+    2. Set the X-coordinate for each individual plot using its slider
+    3. View the interpolated value for each plot
     
-    Each sheet in your Excel file should be named NA.3, NA.4, etc. with columns for x, y, and z values.
+    Data is loaded directly from the GitHub repository.
     """
 )
