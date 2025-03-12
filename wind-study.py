@@ -6,7 +6,6 @@ from scipy.interpolate import griddata
 
 # Set page configuration
 st.set_page_config(page_title="Automatic Contour Plot Reading Tool", layout="centered")
-st.markdown("Turning reading complex charts into a breeze 💨")
 # -----------------------
 # Authentication Section
 # -----------------------
@@ -35,8 +34,8 @@ st.markdown("""
 # -----------------------
 # Main Application
 # -----------------------
-st.title("Contour Analysis Tool")
-
+st.title("Automatic Contour Plot Reading Tool")
+st.markdown("Turning reading complex charts into a breeze 💨")
 # -----------------------
 # Configuration for all plots based on the provided table
 # -----------------------
