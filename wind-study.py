@@ -177,7 +177,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             start=contour_start,
             end=contour_end,
             size=contour_step,
-            labelfont=dict(size=10, color='white')
+            labelfont=dict(size=10, color='black')
         ),
         colorscale='Viridis',
         opacity=0.85,
@@ -202,7 +202,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             end=contour_end,
             size=contour_step
         ),
-        showscale=False,
+        showscale=True,
         line=dict(width=1.5, color='black')
     ))
     
@@ -212,21 +212,21 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             x=[x_input, x_input],
             y=[y_min, y_max],
             mode='lines',
-            line=dict(color='red', width=1, dash='dash'),
+            line=dict(color='black', width=1, dash='dash'),
             showlegend=False
         ))
         fig.add_trace(go.Scatter(
             x=[x_min, x_max],
             y=[y_input, y_input],
             mode='lines',
-            line=dict(color='red', width=1, dash='dash'),
+            line=dict(color='black', width=1, dash='dash'),
             showlegend=False
         ))
         fig.add_trace(go.Scatter(
             x=[x_input],
             y=[y_input],
             mode='markers',
-            marker=dict(color='red', size=10, symbol='x'),
+            marker=dict(color='black', size=10, symbol='x'),
             showlegend=False
         ))
     
