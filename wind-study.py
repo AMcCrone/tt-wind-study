@@ -179,8 +179,8 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             size=contour_step,
             labelfont=dict(size=10, color='black')
         ),
-        colorscale='Burgyl',
-        opacity=0.9,
+        colorscale='Teal',
+        opacity=1,
         line=dict(width=0.5),
         showscale=False,
         colorbar=dict(
