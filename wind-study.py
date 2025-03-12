@@ -3,8 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 from scipy.interpolate import griddata
-import requests
-import io
 
 # Set page configuration
 st.set_page_config(page_title="Contour Analysis Tool", layout="wide")
@@ -12,24 +10,19 @@ st.set_page_config(page_title="Contour Analysis Tool", layout="wide")
 # -----------------------
 # Authentication Section
 # -----------------------
-# Retrieve the password from secrets
 if "password" in st.secrets:
     PASSWORD = st.secrets["password"]
-    # Initialize authentication state
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
     def check_password():
-        """Check the password input against the secret password."""
         if st.session_state.get("password_input") == PASSWORD:
             st.session_state["authenticated"] = True
         else:
             st.error("Incorrect password.")
-    # If the user is not authenticated, show the password input and halt the app.
     if not st.session_state["authenticated"]:
         st.text_input("Enter Password:", type="password", key="password_input", on_change=check_password)
         st.stop()
 else:
-    # If no password is set in secrets, skip authentication
     pass
 
 # -----------------------
@@ -40,8 +33,6 @@ st.title("Contour Analysis Tool")
 # -----------------------
 # Configuration for all plots based on the provided table
 # -----------------------
-
-# Define axis configuration and contour ranges for each plot
 plot_configs = {
     "NA.3": {
         "x_min": 0.1, "x_max": 100, 
@@ -89,74 +80,45 @@ y_axis_name = "z-h_dis (m)"
 # -----------------------
 @st.cache_data
 def load_data():
-    """Load data from GitHub repository."""
+    """Load data from a local Excel file in the repository."""
+    excel_file_path = "Interlayer_E(t)_Database.xlsx"  # Ensure this file is in your repository
     try:
-        # GitHub file URL - adjust this to your actual repository URL
-        github_url = "https://raw.githubusercontent.com/amccrone/tt-wind-study/main/contour_data.xlsx"
-        
-        # Download the file from GitHub
-        try:
-            response = requests.get(github_url)
-            if response.status_code == 200:
-                content = io.BytesIO(response.content)
-            else:
-                st.error(f"Failed to download data from GitHub. Status code: {response.status_code}")
-                return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
-                
-        except Exception as e:
-            st.error(f"Error downloading file from GitHub: {e}")
-            return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
-        
-        # Load all sheets from Excel file
-        dataframes = {}
-        
-        try:
-            # Try to read all sheets
-            excel_file = pd.ExcelFile(content)
-            
-            # Process each sheet in the configuration
-            for sheet_name in plot_configs.keys():
-                if sheet_name in excel_file.sheet_names:
-                    # Read the sheet
-                    df = pd.read_excel(excel_file, sheet_name=sheet_name)
-                    
-                    # Rename columns to x, y, z for standardization
-                    # Assuming first column is x, second is y, third is z
-                    if len(df.columns) >= 3:
-                        column_names = list(df.columns)
-                        column_mapping = {
-                            column_names[0]: 'x',
-                            column_names[1]: 'y',
-                            column_names[2]: 'z'
-                        }
-                        df = df.rename(columns=column_mapping)
-                        
-                        # Filter out any rows with missing values
-                        df = df.dropna(subset=['x', 'y', 'z'])
-                        
-                        dataframes[sheet_name] = df
-                    else:
-                        st.warning(f"Sheet {sheet_name} does not have enough columns.")
-                        dataframes[sheet_name] = pd.DataFrame()
-                else:
-                    st.warning(f"Sheet {sheet_name} not found in the Excel file.")
-                    dataframes[sheet_name] = pd.DataFrame()
-            
-        except Exception as e:
-            st.error(f"Error reading Excel file: {e}")
-            return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
-        
-        return dataframes
-    
+        excel_file = pd.ExcelFile(excel_file_path)
     except Exception as e:
-        st.error(f"Error in data loading: {e}")
-        return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
+        st.error(f"Error loading Excel file: {e}")
+        st.stop()
+    
+    dataframes = {}
+    for sheet_name in plot_configs.keys():
+        if sheet_name in excel_file.sheet_names:
+            try:
+                df = pd.read_excel(excel_file, sheet_name=sheet_name)
+                if len(df.columns) >= 3:
+                    column_names = list(df.columns)
+                    column_mapping = {
+                        column_names[0]: 'x',
+                        column_names[1]: 'y',
+                        column_names[2]: 'z'
+                    }
+                    df = df.rename(columns=column_mapping)
+                    df = df.dropna(subset=['x', 'y', 'z'])
+                    dataframes[sheet_name] = df
+                else:
+                    st.warning(f"Sheet {sheet_name} does not have enough columns.")
+                    dataframes[sheet_name] = pd.DataFrame()
+            except Exception as e:
+                st.warning(f"Error reading sheet {sheet_name}: {e}")
+                dataframes[sheet_name] = pd.DataFrame()
+        else:
+            st.warning(f"Sheet {sheet_name} not found in the Excel file.")
+            dataframes[sheet_name] = pd.DataFrame()
+    
+    return dataframes
 
 # -----------------------
 # Contour Plot Function
 # -----------------------
 def create_contour_plot(df, sheet_name, x_input, y_input):
-    """Create a contour plot with interactive crosshairs for a specific sheet."""
     config = plot_configs[sheet_name]
     x_min, x_max = config["x_min"], config["x_max"]
     y_min, y_max = config["y_min"], config["y_max"]
@@ -165,61 +127,46 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
     contour_end = config["contour_end"] 
     contour_step = config["contour_step"]
     
-    # Check if dataframe is empty
     if df.empty:
-        # Return an empty figure with a message
         fig = go.Figure()
         fig.update_layout(
             title=f"{sheet_name}: No Data Available Yet",
-            annotations=[
-                dict(
-                    text="This plot does not contain any data yet.",
-                    showarrow=False,
-                    font=dict(size=16),
-                    xref="paper",
-                    yref="paper",
-                    x=0.5,
-                    y=0.5
-                )
-            ],
+            annotations=[dict(
+                text="This plot does not contain any data yet.",
+                showarrow=False,
+                font=dict(size=16),
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5
+            )],
             height=400,
             margin=dict(l=50, r=50, t=50, b=50)
         )
         return fig, None
     
-    # Create a dense grid for smooth interpolation
     grid_density = 200
     x_grid = np.logspace(np.log10(x_min), np.log10(x_max), grid_density)
     y_grid = np.logspace(np.log10(y_min), np.log10(y_max), grid_density)
     X_grid, Y_grid = np.meshgrid(x_grid, y_grid)
     
-    # Use griddata for interpolation - creates a smooth surface
     points = np.column_stack((np.log10(df['x']), np.log10(df['y'])))
     Z_grid = griddata(points, df['z'], (np.log10(X_grid), np.log10(Y_grid)), method='cubic')
     
-    # Interpolate the z value at the selected x,y coordinates
     def get_interpolated_z(x, y):
-        # Convert to log space for interpolation
         log_x, log_y = np.log10(x), np.log10(y)
-        
-        # Use griddata for a single point interpolation
         interp_z = griddata(points, df['z'], np.array([[log_x, log_y]]), method='cubic')[0]
-        
         if np.isnan(interp_z):
-            # If outside the convex hull, try with 'nearest' method
             interp_z = griddata(points, df['z'], np.array([[log_x, log_y]]), method='nearest')[0]
-        
         return interp_z
     
-    # Get the interpolated z value if x and y are within range
     interpolated_z = None
     if x_min <= x_input <= x_max and y_min <= y_input <= y_max:
         interpolated_z = get_interpolated_z(x_input, y_input)
     
-    # Create the figure
     fig = go.Figure()
     
-    # Add the contour plot with higher opacity for the color filling
+    # Add filled contour plot
     fig.add_trace(go.Contour(
         x=x_grid,
         y=y_grid,
@@ -256,10 +203,10 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             size=contour_step
         ),
         showscale=False,
-        line=dict(width=1.5, color='black')  # Explicitly set black contour lines
+        line=dict(width=1.5, color='black')
     ))
     
-    # Add crosshairs if x and y are within range
+    # Add crosshairs and marker for the selected point
     if x_min <= x_input <= x_max and y_min <= y_input <= y_max:
         fig.add_trace(go.Scatter(
             x=[x_input, x_input],
@@ -268,7 +215,6 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             line=dict(color='red', width=1, dash='dash'),
             showlegend=False
         ))
-        
         fig.add_trace(go.Scatter(
             x=[x_min, x_max],
             y=[y_input, y_input],
@@ -276,8 +222,6 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             line=dict(color='red', width=1, dash='dash'),
             showlegend=False
         ))
-        
-        # Add marker at the intersection point
         fig.add_trace(go.Scatter(
             x=[x_input],
             y=[y_input],
@@ -286,7 +230,6 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             showlegend=False
         ))
     
-    # Update layout for log-log axes with specific ranges
     fig.update_layout(
         title=f"{sheet_name}: Contour Plot",
         xaxis=dict(
@@ -313,21 +256,15 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
 # -----------------------
 # Main Application Logic
 # -----------------------
-
-# Load status indicator
 with st.sidebar:
-    st.info("Loading data from GitHub repository...")
-    
-# Load all data
+    st.info("Loading data from local Excel file...")
 datasets = load_data()
-
 with st.sidebar:
-    # Show data loading status
     num_data_loaded = sum(1 for df in datasets.values() if not df.empty)
     st.success(f"Data loaded: {num_data_loaded} sheets found with data")
 
-# Global y-coordinate selection (since y-axis is the same for all plots)
-y_input = st.slider(
+# Global y-coordinate numerical input
+y_input = st.number_input(
     f"Y-Coordinate ({y_axis_name})", 
     min_value=2.0, 
     max_value=200.0, 
@@ -335,16 +272,12 @@ y_input = st.slider(
     format="%.1f"
 )
 
-# Container to display all plots
 plot_container = st.container()
 
-# Create all plots in a single page
 with plot_container:
-    # Display each plot in its own section
     for i, sheet_name in enumerate(["NA.3", "NA.4", "NA.5", "NA.6", "NA.7", "NA.8"]):
         st.markdown(f"### {sheet_name}")
         
-        # Get configuration for this plot
         config = plot_configs[sheet_name]
         x_min, x_max = config["x_min"], config["x_max"]
         x_name = config["x_name"]
@@ -352,26 +285,22 @@ with plot_container:
         contour_end = config["contour_end"]
         contour_step = config["contour_step"]
         
-        # X-coordinate selection for this specific plot
-        x_input = st.slider(
+        # X-coordinate numerical input for this specific plot
+        x_input = st.number_input(
             f"X-Coordinate ({x_name})", 
             min_value=float(x_min), 
             max_value=float(x_max), 
-            value=float(np.sqrt(x_min*x_max)),
+            value=float(np.sqrt(x_min * x_max)),
             format="%.1f",
-            key=f"x_slider_{sheet_name}"
+            key=f"x_input_{sheet_name}"
         )
         
-        # Get data for this plot
         df = datasets[sheet_name]
         
-        # Create the plot
         col1, col2 = st.columns([3, 1])
         
         with col1:
-            fig, interpolated_z = create_contour_plot(
-                df, sheet_name, x_input, y_input
-            )
+            fig, interpolated_z = create_contour_plot(df, sheet_name, x_input, y_input)
             st.plotly_chart(fig, use_container_width=True)
             
         with col2:
@@ -380,10 +309,7 @@ with plot_container:
             
             if interpolated_z is not None:
                 format_string = "%.4f" if contour_step < 0.05 else "%.2f"
-                st.metric(
-                    "Interpolated Value", 
-                    format_string % interpolated_z
-                )
+                st.metric("Interpolated Value", format_string % interpolated_z)
                 st.write(f"Contour Range: {contour_start:.3f} to {contour_end:.3f}")
                 st.write(f"Contour Interval: {contour_step:.3f}")
             elif not df.empty:
@@ -391,21 +317,17 @@ with plot_container:
             else:
                 st.info("No data available for this sheet")
         
-        # Add a separator between plots
-        if i < 5:  # Don't add separator after the last plot
+        if i < 5:
             st.markdown("---")
 
-# -----------------------
-# Footer
-# -----------------------
 st.markdown("---")
 st.info(
     """
     **How to Use:**
-    1. Adjust the global Y-coordinate slider at the top to set the Y value for all plots
-    2. Set the X-coordinate for each individual plot using its slider
-    3. View the interpolated value for each plot
+    1. Adjust the global Y-coordinate input at the top to set the Y value for all plots.
+    2. Type the X-coordinate for each individual plot using its input box.
+    3. View the interpolated value for each plot.
     
-    Data is loaded directly from the GitHub repository.
+    Data is loaded directly from the local Excel file in the repository.
     """
 )
