@@ -37,19 +37,19 @@ plot_configs = {
     "NA.3": {
         "x_min": 0.1, "x_max": 100, 
         "y_min": 2, "y_max": 200, 
-        "x_name": "distance (m)",
+        "x_name": "Distance upwind to shoreline (km)",
         "contour_start": 0.75, "contour_end": 1.7, "contour_step": 0.05
     },
     "NA.4": {
         "x_min": 0.1, "x_max": 20, 
         "y_min": 2, "y_max": 200, 
-        "x_name": "spread length (m)",
+        "x_name": "Distance inside town terrain (km)",
         "contour_start": 0.56, "contour_end": 1.0, "contour_step": 0.02
     },
     "NA.5": {
         "x_min": 0.1, "x_max": 100, 
         "y_min": 2, "y_max": 200, 
-        "x_name": "radius (m)",
+        "x_name": "Distance upwind to shoreline (km)",
         "contour_start": 0.07, "contour_end": 0.21, "contour_step": 0.01
     },
     "NA.6": {
