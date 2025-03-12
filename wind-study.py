@@ -265,47 +265,54 @@ with global_input_container:
     with col1:
         # Global y-coordinate numerical input
         y_input = st.number_input(
-            f"({y_axis_name})", 
-            min_value=2.0, 
-            max_value=200.0, 
+            f"({y_axis_name})",
+            min_value=2.0,
+            max_value=200.0,
             value=50.0,
             format="%.1f"
         )
     
     with col2:
-        # Create a label with a tooltip for the x-coordinate for upwind plots.
-        upwind_label = (
-            'Distance upwind to shoreline (km) '
-            '<span title="If input is lower than 0.1 km or higher than 100 km, the value is clamped to the minimum or maximum value respectively.">(?)</span>'
-        )
-        st.markdown(upwind_label, unsafe_allow_html=True)
+        # Global x-coordinate for upwind plots (NA.3, NA.5, NA.7)
+        upwind_title = "Distance upwind to shoreline (km) " + "ℹ️"
         x_upwind = st.number_input(
-            "",
-            min_value=0.1, 
-            max_value=100.0, 
+            upwind_title,
+            min_value=0.1,
+            max_value=100.0,
             value=10.0,
             format="%.1f"
         )
-        # Clamp the value manually (even though st.number_input enforces the limits, this ensures it)
+        # Add hover info tooltip for upwind input
+        st.markdown("""
+        <div style="font-size: small; color: gray; margin-top: -15px">
+        Values outside the range [0.1, 100.0] will be clamped to min/max values
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Apply limits to x_upwind
         if x_upwind < 0.1:
             x_upwind = 0.1
         elif x_upwind > 100.0:
             x_upwind = 100.0
     
     with col3:
-        # Create a label with a tooltip for the x-coordinate for town plots.
-        town_label = (
-            'Distance inside town terrain (km) '
-            '<span title="If input is lower than 0.1 km or higher than 20 km, the value is clamped to the minimum or maximum value respectively.">(?)</span>'
-        )
-        st.markdown(town_label, unsafe_allow_html=True)
+        # Global x-coordinate for town plots (NA.4, NA.6, NA.8)
+        town_title = "Distance inside town terrain (km) " + "ℹ️"
         x_town = st.number_input(
-            "",
-            min_value=0.1, 
-            max_value=20.0, 
+            town_title,
+            min_value=0.1,
+            max_value=20.0,
             value=5.0,
             format="%.1f"
         )
+        # Add hover info tooltip for town input
+        st.markdown("""
+        <div style="font-size: small; color: gray; margin-top: -15px">
+        Values outside the range [0.1, 20.0] will be clamped to min/max values
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Apply limits to x_town
         if x_town < 0.1:
             x_town = 0.1
         elif x_town > 20.0:
