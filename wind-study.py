@@ -275,49 +275,28 @@ with global_input_container:
     with col2:
         # Global x-coordinate for upwind plots (NA.3, NA.5, NA.7)
         upwind_title = "Distance upwind to shoreline (km) " + "ℹ️"
-        x_upwind = st.number_input(
+        x_upwind_input = st.number_input(
             upwind_title,
-            min_value=0.1,
-            max_value=100.0,
             value=10.0,
-            format="%.1f"
+            format="%.1f",
+            help="Values outside the range [0.1, 100.0] will be clamped to min/max values"
         )
-        # Add hover info tooltip for upwind input
-        st.markdown("""
-        <div style="font-size: small; color: gray; margin-top: -15px">
-        Values outside the range [0.1, 100.0] will be clamped to min/max values
-        </div>
-        """, unsafe_allow_html=True)
         
-        # Apply limits to x_upwind
-        if x_upwind < 0.1:
-            x_upwind = 0.1
-        elif x_upwind > 100.0:
-            x_upwind = 100.0
+        # Apply limits to x_upwind (clamping logic)
+        x_upwind = max(0.1, min(x_upwind_input, 100.0))
     
     with col3:
         # Global x-coordinate for town plots (NA.4, NA.6, NA.8)
         town_title = "Distance inside town terrain (km) " + "ℹ️"
-        x_town = st.number_input(
+        x_town_input = st.number_input(
             town_title,
-            min_value=0.1,
-            max_value=20.0,
             value=5.0,
-            format="%.1f"
+            format="%.1f",
+            help="Values outside the range [0.1, 20.0] will be clamped to min/max values"
         )
-        # Add hover info tooltip for town input
-        st.markdown("""
-        <div style="font-size: small; color: gray; margin-top: -15px">
-        Values outside the range [0.1, 20.0] will be clamped to min/max values
-        </div>
-        """, unsafe_allow_html=True)
         
-        # Apply limits to x_town
-        if x_town < 0.1:
-            x_town = 0.1
-        elif x_town > 20.0:
-            x_town = 20.0
-
+        # Apply limits to x_town (clamping logic)
+        x_town = max(0.1, min(x_town_input, 20.0))
 
 # Create a table to display all interpolated values
 interpolated_values = {}
