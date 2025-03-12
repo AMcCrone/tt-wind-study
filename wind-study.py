@@ -191,20 +191,20 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
     ))
     
     # Add black contour lines
-    fig.add_trace(go.Contour(
-        x=x_grid,
-        y=y_grid,
-        z=Z_grid,
-        contours=dict(
-            coloring='lines',
-            showlabels=False,
-            start=contour_start,
-            end=contour_end,
-            size=contour_step
-        ),
-        showscale=True,
-        line=dict(width=1.5, color='black')
-    ))
+    # fig.add_trace(go.Contour(
+    #     x=x_grid,
+    #     y=y_grid,
+    #     z=Z_grid,
+    #     contours=dict(
+    #         coloring='lines',
+    #         showlabels=False,
+    #         start=contour_start,
+    #         end=contour_end,
+    #         size=contour_step
+    #     ),
+    #     showscale=False,
+    #     line=dict(width=1.5, color='black')
+    # ))
     
     # Add crosshairs and marker for the selected point
     if x_min <= x_input <= x_max and y_min <= y_input <= y_max:
