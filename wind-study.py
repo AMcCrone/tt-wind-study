@@ -6,7 +6,7 @@ from scipy.interpolate import griddata
 
 # Set page configuration
 st.set_page_config(page_title="Contour Analysis Tool")
- 
+
 # -----------------------
 # Authentication Section
 # -----------------------
