@@ -164,11 +164,11 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
     X_grid, Y_grid = np.meshgrid(x_grid, y_grid)
     
     points = np.column_stack((np.log10(df['x']), np.log10(df['y'])))
-    Z_grid = griddata(points, df['z'], (np.log10(X_grid), np.log10(Y_grid)), method='cubic')
+    Z_grid = griddata(points, df['z'], (np.log10(X_grid), np.log10(Y_grid)), method='linear')
     
     def get_interpolated_z(x, y):
         log_x, log_y = np.log10(x), np.log10(y)
-        interp_z = griddata(points, df['z'], np.array([[log_x, log_y]]), method='cubic')[0]
+        interp_z = griddata(points, df['z'], np.array([[log_x, log_y]]), method='linear')[0]
         if np.isnan(interp_z):
             interp_z = griddata(points, df['z'], np.array([[log_x, log_y]]), method='nearest')[0]
         return interp_z
