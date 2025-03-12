@@ -38,37 +38,43 @@ plot_configs = {
         "x_min": 0.1, "x_max": 100, 
         "y_min": 2, "y_max": 200, 
         "x_name": "Distance upwind to shoreline (km)",
-        "contour_start": 0.75, "contour_end": 1.7, "contour_step": 0.05
+        "contour_start": 0.75, "contour_end": 1.7, "contour_step": 0.05,
+        "x_type": "upwind"
     },
     "NA.4": {
         "x_min": 0.1, "x_max": 20, 
         "y_min": 2, "y_max": 200, 
         "x_name": "Distance inside town terrain (km)",
-        "contour_start": 0.56, "contour_end": 1.0, "contour_step": 0.02
+        "contour_start": 0.56, "contour_end": 1.0, "contour_step": 0.02,
+        "x_type": "town"
     },
     "NA.5": {
         "x_min": 0.1, "x_max": 100, 
         "y_min": 2, "y_max": 200, 
         "x_name": "Distance upwind to shoreline (km)",
-        "contour_start": 0.07, "contour_end": 0.21, "contour_step": 0.01
+        "contour_start": 0.07, "contour_end": 0.21, "contour_step": 0.01,
+        "x_type": "upwind"
     },
     "NA.6": {
         "x_min": 0.1, "x_max": 20, 
         "y_min": 2, "y_max": 200, 
         "x_name": "parameter X (m)",
-        "contour_start": 1.0, "contour_end": 1.8, "contour_step": 0.05
+        "contour_start": 1.0, "contour_end": 1.8, "contour_step": 0.05,
+        "x_type": "town"
     },
     "NA.7": {
         "x_min": 0.1, "x_max": 100, 
         "y_min": 2, "y_max": 200, 
         "x_name": "parameter Y (m)",
-        "contour_start": 1.5, "contour_end": 4.2, "contour_step": 0.1
+        "contour_start": 1.5, "contour_end": 4.2, "contour_step": 0.1,
+        "x_type": "upwind"
     },
     "NA.8": {
         "x_min": 0.1, "x_max": 20, 
         "y_min": 2, "y_max": 200, 
         "x_name": "parameter Z (m)",
-        "contour_start": 0.60, "contour_end": 1.0, "contour_step": 0.02
+        "contour_start": 0.60, "contour_end": 1.0, "contour_step": 0.02,
+        "x_type": "town"
     }
 }
 
@@ -248,15 +254,45 @@ with st.sidebar:
     num_data_loaded = sum(1 for df in datasets.values() if not df.empty)
     st.success(f"Data loaded: {num_data_loaded} sheets found with data")
 
-# Global y-coordinate numerical input
-y_input = st.number_input(
-    f"Y-Coordinate ({y_axis_name})", 
-    min_value=2.0, 
-    max_value=200.0, 
-    value=50.0,
-    format="%.1f"
-)
+# Create a container for global input controls
+global_input_container = st.container()
+with global_input_container:
+    st.markdown("### Global Coordinate Inputs")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Global y-coordinate numerical input
+        y_input = st.number_input(
+            f"Y-Coordinate ({y_axis_name})", 
+            min_value=2.0, 
+            max_value=200.0, 
+            value=50.0,
+            format="%.1f"
+        )
+    
+    with col2:
+        # Global x-coordinate for upwind plots (NA.3, NA.5, NA.7)
+        x_upwind = st.number_input(
+            "Distance upwind to shoreline (km)",
+            min_value=0.1, 
+            max_value=100.0, 
+            value=10.0,
+            format="%.1f",
+            help="Affects plots NA.3, NA.5, and NA.7"
+        )
+    
+    with col3:
+        # Global x-coordinate for town plots (NA.4, NA.6, NA.8)
+        x_town = st.number_input(
+            "Distance inside town terrain (km)",
+            min_value=0.1, 
+            max_value=20.0, 
+            value=5.0,
+            format="%.1f",
+            help="Affects plots NA.4, NA.6, and NA.8"
+        )
 
+st.markdown("---")
 plot_container = st.container()
 
 with plot_container:
@@ -264,21 +300,21 @@ with plot_container:
         st.markdown(f"### {sheet_name}")
         
         config = plot_configs[sheet_name]
+        x_type = config["x_type"]
         x_min, x_max = config["x_min"], config["x_max"]
         x_name = config["x_name"]
         contour_start = config["contour_start"]
         contour_end = config["contour_end"]
         contour_step = config["contour_step"]
         
-        # X-coordinate numerical input for this specific plot
-        x_input = st.number_input(
-            f"X-Coordinate ({x_name})", 
-            min_value=float(x_min), 
-            max_value=float(x_max), 
-            value=float(np.sqrt(x_min * x_max)),
-            format="%.1f",
-            key=f"x_input_{sheet_name}"
-        )
+        # Use the appropriate global X input based on the plot type
+        x_input = x_upwind if x_type == "upwind" else x_town
+        
+        # Check if x_input is within valid range for this plot
+        if x_input < x_min:
+            x_input = x_min
+        elif x_input > x_max:
+            x_input = x_max
         
         df = datasets[sheet_name]
         
@@ -310,8 +346,9 @@ st.info(
     """
     **How to Use:**
     1. Adjust the global Y-coordinate input at the top to set the Y value for all plots.
-    2. Type the X-coordinate for each individual plot using its input box.
-    3. View the interpolated value for each plot.
+    2. Use the "Distance upwind to shoreline" input to set X values for plots NA.3, NA.5, and NA.7.
+    3. Use the "Distance inside town terrain" input to set X values for plots NA.4, NA.6, and NA.8.
+    4. View the interpolated value for each plot.
     
     Data is loaded directly from the local Excel file in the repository.
     """
