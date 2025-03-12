@@ -180,7 +180,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
             labelfont=dict(size=10, color='black')
         ),
         colorscale='Viridis',
-        opacity=0.6,
+        opacity=0.9,
         line=dict(width=0.5),
         showscale=False,
         colorbar=dict(
