@@ -13,20 +13,24 @@ st.set_page_config(page_title="Contour Analysis Tool", layout="wide")
 # Authentication Section
 # -----------------------
 # Retrieve the password from secrets
-PASSWORD = st.secrets["password"]
-# Initialize authentication state
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-def check_password():
-    """Check the password input against the secret password."""
-    if st.session_state.get("password_input") == PASSWORD:
-        st.session_state["authenticated"] = True
-    else:
-        st.error("Incorrect password.")
-# If the user is not authenticated, show the password input and halt the app.
-if not st.session_state["authenticated"]:
-    st.text_input("Enter Password:", type="password", key="password_input", on_change=check_password)
-    st.stop()
+if "password" in st.secrets:
+    PASSWORD = st.secrets["password"]
+    # Initialize authentication state
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+    def check_password():
+        """Check the password input against the secret password."""
+        if st.session_state.get("password_input") == PASSWORD:
+            st.session_state["authenticated"] = True
+        else:
+            st.error("Incorrect password.")
+    # If the user is not authenticated, show the password input and halt the app.
+    if not st.session_state["authenticated"]:
+        st.text_input("Enter Password:", type="password", key="password_input", on_change=check_password)
+        st.stop()
+else:
+    # If no password is set in secrets, skip authentication
+    pass
 
 # -----------------------
 # Main Application
@@ -85,61 +89,67 @@ y_axis_name = "z-h_dis (m)"
 # -----------------------
 @st.cache_data
 def load_data():
-    """Load data for each sheet with appropriate X, Y, Z columns."""
-    dataframes = {}
-    
-    for sheet_name, config in plot_configs.items():
-        # Generate synthetic data that matches the expected contour ranges
-        x_min, x_max = config["x_min"], config["x_max"]
-        y_min, y_max = config["y_min"], config["y_max"]
-        contour_start, contour_end = config["contour_start"], config["contour_end"]
+    """Load data from Excel file for each sheet."""
+    try:
+        # Define the file location - update this to your actual file path
+        # For development purposes, allow file upload
+        file_upload = st.sidebar.file_uploader("Upload Excel file", type=["xlsx", "xls"])
         
-        # For sheets with data
-        if sheet_name in ["NA.3", "NA.4", "NA.5"]:
-            # Create a grid of logarithmically spaced points
-            num_x, num_y = 50, 50  # Adjust as needed for data density
-            x_vals = np.logspace(np.log10(x_min), np.log10(x_max), num_x)
-            y_vals = np.logspace(np.log10(y_min), np.log10(y_max), num_y)
-            
-            x_grid, y_grid = np.meshgrid(x_vals, y_vals)
-            x_flat = x_grid.flatten()
-            y_flat = y_grid.flatten()
-            
-            # Generate Z values appropriate for each sheet within their contour range
-            if sheet_name == "NA.3":
-                # Range: 0.75 to 1.7
-                z_flat = contour_start + (contour_end - contour_start) * (
-                    0.5 + 0.4 * np.sin(np.log10(x_flat) * 1.5) * np.cos(np.log10(y_flat) * 1.2)
-                )
-            elif sheet_name == "NA.4":
-                # Range: 0.56 to 1.0
-                z_flat = contour_start + (contour_end - contour_start) * (
-                    0.5 + 0.4 * np.sin(np.log10(x_flat) * 2.0) * np.cos(np.log10(y_flat) * 1.3)
-                )
-            elif sheet_name == "NA.5":
-                # Range: 0.07 to 0.21
-                z_flat = contour_start + (contour_end - contour_start) * (
-                    0.5 + 0.4 * np.sin(np.log10(x_flat) * 0.8) * np.cos(np.log10(y_flat) * 1.0)
-                )
-            
-            # Ensure values stay within the contour range
-            z_flat = np.clip(z_flat, contour_start, contour_end)
-            
-            # Create dataframe with X, Y, Z columns
-            dataframes[sheet_name] = pd.DataFrame({
-                'x': x_flat,
-                'y': y_flat,
-                'z': z_flat
-            })
+        if file_upload is not None:
+            file_path = file_upload
         else:
-            # Empty dataframe for sheets without data
-            dataframes[sheet_name] = pd.DataFrame({
-                'x': [],
-                'y': [],
-                'z': []
-            })
+            # Default file path - update this to your actual file path
+            file_path = st.secrets.get("data_file_path", "data.xlsx")
+            # Check if file exists before attempting to load
+            if not os.path.exists(file_path) and not isinstance(file_path, io.BytesIO):
+                st.warning(f"Data file not found. Please upload your data file.")
+                return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
+        
+        # Load all sheets from Excel file
+        dataframes = {}
+        
+        try:
+            # Try to read all sheets
+            excel_file = pd.ExcelFile(file_path)
+            
+            # Process each sheet in the configuration
+            for sheet_name in plot_configs.keys():
+                if sheet_name in excel_file.sheet_names:
+                    # Read the sheet
+                    df = pd.read_excel(excel_file, sheet_name=sheet_name)
+                    
+                    # Rename columns to x, y, z for standardization
+                    # Assuming first column is x, second is y, third is z
+                    # Adjust this if your Excel structure is different
+                    if len(df.columns) >= 3:
+                        column_names = list(df.columns)
+                        column_mapping = {
+                            column_names[0]: 'x',
+                            column_names[1]: 'y',
+                            column_names[2]: 'z'
+                        }
+                        df = df.rename(columns=column_mapping)
+                        
+                        # Filter out any rows with missing values
+                        df = df.dropna(subset=['x', 'y', 'z'])
+                        
+                        dataframes[sheet_name] = df
+                    else:
+                        st.warning(f"Sheet {sheet_name} does not have enough columns.")
+                        dataframes[sheet_name] = pd.DataFrame()
+                else:
+                    st.warning(f"Sheet {sheet_name} not found in the Excel file.")
+                    dataframes[sheet_name] = pd.DataFrame()
+            
+        except Exception as e:
+            st.error(f"Error reading Excel file: {e}")
+            return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
+        
+        return dataframes
     
-    return dataframes
+    except Exception as e:
+        st.error(f"Error in data loading: {e}")
+        return {sheet: pd.DataFrame() for sheet in plot_configs.keys()}
 
 # -----------------------
 # Contour Plot Function
@@ -299,6 +309,9 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
     
     return fig, interpolated_z
 
+# Add file upload to sidebar
+st.sidebar.markdown("## Data Configuration")
+
 # -----------------------
 # Main Application Logic
 # -----------------------
@@ -382,10 +395,11 @@ st.markdown("---")
 st.info(
     """
     **How to Use:**
-    1. Adjust the global Y-coordinate slider at the top to set the Y value for all plots
-    2. Set the X-coordinate for each individual plot using its slider
-    3. View the interpolated value for each plot
+    1. Upload your Excel data file using the sidebar uploader
+    2. Adjust the global Y-coordinate slider at the top to set the Y value for all plots
+    3. Set the X-coordinate for each individual plot using its slider
+    4. View the interpolated value for each plot
     
-    Note: Currently, only NA.3, NA.4, and NA.5 have data available.
+    Each sheet in your Excel file should be named NA.3, NA.4, etc. with columns for x, y, and z values.
     """
 )
