@@ -81,7 +81,7 @@ y_axis_name = "z-h_dis (m)"
 @st.cache_data
 def load_data():
     """Load data from a local Excel file in the repository."""
-    excel_file_path = "Interlayer_E(t)_Database.xlsx"  # Ensure this file is in your repository
+    excel_file_path = "contour_data.xlsx"  # Ensure this file is in your repository
     try:
         excel_file = pd.ExcelFile(excel_file_path)
     except Exception as e:
