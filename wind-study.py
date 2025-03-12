@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-from scipy.interpolate import griddata 
+from scipy.interpolate import griddata
 
 # Set page configuration
 st.set_page_config(page_title="Contour Analysis Tool", layout="centered")
@@ -106,7 +106,7 @@ y_axis_name = "z-h_dis (m)"
 @st.cache_data(show_spinner=False)
 def load_data():
     """Load data from a local Excel file in the repository."""
-    excel_file_path = "contour_data.xlsx"  # Ensure this file is in your repository
+    excel_file_path = "contour_data1.xlsx"  # Ensure this file is in your repository
     try:
         excel_file = pd.ExcelFile(excel_file_path)
     except Exception as e:
