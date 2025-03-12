@@ -259,13 +259,13 @@ datasets = load_data()
 # Create a container for global input controls
 global_input_container = st.container()
 with global_input_container:
-    st.markdown("### Global Coordinate Inputs")
+    st.markdown("### Eurocode 1991-1-4 NA inputs")
     col1, col2, col3 = st.columns(3)
     
     with col1:
         # Global y-coordinate numerical input
         y_input = st.number_input(
-            f"Y-Coordinate ({y_axis_name})", 
+            f"({y_axis_name})", 
             min_value=2.0, 
             max_value=200.0, 
             value=50.0,
@@ -273,24 +273,44 @@ with global_input_container:
         )
     
     with col2:
-        # Global x-coordinate for upwind plots (NA.3, NA.5, NA.7)
+        # Create a label with a tooltip for the x-coordinate for upwind plots.
+        upwind_label = (
+            'Distance upwind to shoreline (km) '
+            '<span title="If input is lower than 0.1 km or higher than 100 km, the value is clamped to the minimum or maximum value respectively.">(?)</span>'
+        )
+        st.markdown(upwind_label, unsafe_allow_html=True)
         x_upwind = st.number_input(
-            "Distance upwind to shoreline (km)",
+            "",
             min_value=0.1, 
             max_value=100.0, 
             value=10.0,
             format="%.1f"
         )
+        # Clamp the value manually (even though st.number_input enforces the limits, this ensures it)
+        if x_upwind < 0.1:
+            x_upwind = 0.1
+        elif x_upwind > 100.0:
+            x_upwind = 100.0
     
     with col3:
-        # Global x-coordinate for town plots (NA.4, NA.6, NA.8)
+        # Create a label with a tooltip for the x-coordinate for town plots.
+        town_label = (
+            'Distance inside town terrain (km) '
+            '<span title="If input is lower than 0.1 km or higher than 20 km, the value is clamped to the minimum or maximum value respectively.">(?)</span>'
+        )
+        st.markdown(town_label, unsafe_allow_html=True)
         x_town = st.number_input(
-            "Distance inside town terrain (km)",
+            "",
             min_value=0.1, 
             max_value=20.0, 
             value=5.0,
             format="%.1f"
         )
+        if x_town < 0.1:
+            x_town = 0.1
+        elif x_town > 20.0:
+            x_town = 20.0
+
 
 # Create a table to display all interpolated values
 interpolated_values = {}
