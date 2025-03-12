@@ -5,7 +5,7 @@ import numpy as np
 from scipy.interpolate import griddata
 
 # Set page configuration
-st.set_page_config(page_title="Contour Analysis Tool")
+st.set_page_config(page_title="Contour Analysis Tool", layout="centered")
 
 # -----------------------
 # Authentication Section
@@ -25,6 +25,13 @@ if "password" in st.secrets:
 else:
     pass
 
+# Hide sidebar
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] {display: none;}
+</style>
+""", unsafe_allow_html=True)
+
 # -----------------------
 # Main Application
 # -----------------------
@@ -39,42 +46,54 @@ plot_configs = {
         "y_min": 2, "y_max": 200, 
         "x_name": "Distance upwind to shoreline (km)",
         "contour_start": 0.75, "contour_end": 1.7, "contour_step": 0.05,
-        "x_type": "upwind"
+        "x_type": "upwind",
+        "var_name": "c_rz",
+        "section_heading": "Values of $C_r(z)$"
     },
     "NA.4": {
         "x_min": 0.1, "x_max": 20, 
         "y_min": 2, "y_max": 200, 
         "x_name": "Distance inside town terrain (km)",
         "contour_start": 0.56, "contour_end": 1.0, "contour_step": 0.02,
-        "x_type": "town"
+        "x_type": "town",
+        "var_name": "c_rT",
+        "section_heading": "Values of correction factor $c_{r,T}$ for sites in Town terrain"
     },
     "NA.5": {
         "x_min": 0.1, "x_max": 100, 
         "y_min": 2, "y_max": 200, 
         "x_name": "Distance upwind to shoreline (km)",
         "contour_start": 0.07, "contour_end": 0.21, "contour_step": 0.01,
-        "x_type": "upwind"
+        "x_type": "upwind",
+        "var_name": "I_vz",
+        "section_heading": "Values of $I_v(z)_{flat}$"
     },
     "NA.6": {
         "x_min": 0.1, "x_max": 20, 
         "y_min": 2, "y_max": 200, 
         "x_name": "parameter X (m)",
         "contour_start": 1.0, "contour_end": 1.8, "contour_step": 0.05,
-        "x_type": "town"
+        "x_type": "town",
+        "var_name": "k_IT",
+        "section_heading": "Values of turbulence correction factor $k_{I,T}$ for sites in Town terrain"
     },
     "NA.7": {
         "x_min": 0.1, "x_max": 100, 
         "y_min": 2, "y_max": 200, 
         "x_name": "parameter Y (m)",
         "contour_start": 1.5, "contour_end": 4.2, "contour_step": 0.1,
-        "x_type": "upwind"
+        "x_type": "upwind",
+        "var_name": "c_ez",
+        "section_heading": "Values of $c_e(z)$"
     },
     "NA.8": {
         "x_min": 0.1, "x_max": 20, 
         "y_min": 2, "y_max": 200, 
         "x_name": "parameter Z (m)",
         "contour_start": 0.60, "contour_end": 1.0, "contour_step": 0.02,
-        "x_type": "town"
+        "x_type": "town",
+        "var_name": "c_eT",
+        "section_heading": "Values of exposure correction factor $c_{e,T}$ for sites in Town terrain"
     }
 }
 
@@ -84,15 +103,16 @@ y_axis_name = "z-h_dis (m)"
 # -----------------------
 # Data Loading Function
 # -----------------------
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def load_data():
     """Load data from a local Excel file in the repository."""
     excel_file_path = "contour_data.xlsx"  # Ensure this file is in your repository
     try:
         excel_file = pd.ExcelFile(excel_file_path)
     except Exception as e:
-        st.error(f"Error loading Excel file: {e}")
-        st.stop()
+        # Silently log the error but don't display
+        dataframes = {sheet_name: pd.DataFrame() for sheet_name in plot_configs.keys()}
+        return dataframes
     
     dataframes = {}
     for sheet_name in plot_configs.keys():
@@ -110,13 +130,10 @@ def load_data():
                     df = df.dropna(subset=['x', 'y', 'z'])
                     dataframes[sheet_name] = df
                 else:
-                    st.warning(f"Sheet {sheet_name} does not have enough columns.")
                     dataframes[sheet_name] = pd.DataFrame()
-            except Exception as e:
-                st.warning(f"Error reading sheet {sheet_name}: {e}")
+            except Exception:
                 dataframes[sheet_name] = pd.DataFrame()
         else:
-            st.warning(f"Sheet {sheet_name} not found in the Excel file.")
             dataframes[sheet_name] = pd.DataFrame()
     
     return dataframes
@@ -136,18 +153,8 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
     if df.empty:
         fig = go.Figure()
         fig.update_layout(
-            title=f"{sheet_name}: No Data Available Yet",
-            annotations=[dict(
-                text="This plot does not contain any data yet.",
-                showarrow=False,
-                font=dict(size=16),
-                xref="paper",
-                yref="paper",
-                x=0.5,
-                y=0.5
-            )],
             height=500,
-            margin=dict(l=50, r=50, t=50, b=50)
+            margin=dict(l=50, r=50, t=20, b=50)
         )
         return fig, None
     
@@ -222,7 +229,6 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
         ))
     
     fig.update_layout(
-        title=f"{sheet_name}: Contour Plot",
         xaxis=dict(
             type='log',
             title=x_name,
@@ -239,7 +245,7 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
         ),
         height=500,
         plot_bgcolor='rgba(240,240,240,0.95)',
-        margin=dict(l=50, r=50, t=50, b=50)
+        margin=dict(l=50, r=50, t=20, b=50)
     )
     
     return fig, interpolated_z
@@ -247,12 +253,8 @@ def create_contour_plot(df, sheet_name, x_input, y_input):
 # -----------------------
 # Main Application Logic
 # -----------------------
-with st.sidebar:
-    st.info("Loading data from local Excel file...")
+# Load data without showing spinner
 datasets = load_data()
-with st.sidebar:
-    num_data_loaded = sum(1 for df in datasets.values() if not df.empty)
-    st.success(f"Data loaded: {num_data_loaded} sheets found with data")
 
 # Create a container for global input controls
 global_input_container = st.container()
@@ -277,8 +279,7 @@ with global_input_container:
             min_value=0.1, 
             max_value=100.0, 
             value=10.0,
-            format="%.1f",
-            help="Affects plots NA.3, NA.5, and NA.7"
+            format="%.1f"
         )
     
     with col3:
@@ -288,24 +289,56 @@ with global_input_container:
             min_value=0.1, 
             max_value=20.0, 
             value=5.0,
-            format="%.1f",
-            help="Affects plots NA.4, NA.6, and NA.8"
+            format="%.1f"
         )
+
+# Create a table to display all interpolated values
+interpolated_values = {}
+for sheet_name in plot_configs.keys():
+    config = plot_configs[sheet_name]
+    x_type = config["x_type"]
+    x_min, x_max = config["x_min"], config["x_max"]
+    var_name = config["var_name"]
+    
+    # Use the appropriate global X input based on the plot type
+    x_input = x_upwind if x_type == "upwind" else x_town
+    
+    # Check if x_input is within valid range for this plot
+    if x_input < x_min:
+        x_input = x_min
+    elif x_input > x_max:
+        x_input = x_max
+    
+    df = datasets[sheet_name]
+    
+    # Get interpolated value
+    _, interpolated_z = create_contour_plot(df, sheet_name, x_input, y_input)
+    if interpolated_z is not None:
+        interpolated_values[var_name] = round(interpolated_z, 3)
+    else:
+        interpolated_values[var_name] = None
+
+# Display the interpolated values table
+st.markdown("### Interpolated Values")
+values_df = pd.DataFrame({
+    "Variable": list(interpolated_values.keys()),
+    "Value": list(interpolated_values.values())
+})
+st.table(values_df)
 
 st.markdown("---")
 plot_container = st.container()
 
 with plot_container:
     for i, sheet_name in enumerate(["NA.3", "NA.4", "NA.5", "NA.6", "NA.7", "NA.8"]):
-        st.markdown(f"### {sheet_name}")
-        
         config = plot_configs[sheet_name]
+        section_heading = config["section_heading"]
         x_type = config["x_type"]
         x_min, x_max = config["x_min"], config["x_max"]
         x_name = config["x_name"]
-        contour_start = config["contour_start"]
-        contour_end = config["contour_end"]
-        contour_step = config["contour_step"]
+        var_name = config["var_name"]
+        
+        st.markdown(f"### {section_heading}")
         
         # Use the appropriate global X input based on the plot type
         x_input = x_upwind if x_type == "upwind" else x_town
@@ -329,27 +362,22 @@ with plot_container:
             st.write(f"Y: **{y_input:.1f}** {y_axis_name}")
             
             if interpolated_z is not None:
-                format_string = "%.4f" if contour_step < 0.05 else "%.2f"
-                st.metric("Interpolated Value", format_string % interpolated_z)
-                st.write(f"Contour Range: {contour_start:.3f} to {contour_end:.3f}")
-                st.write(f"Contour Interval: {contour_step:.3f}")
+                st.metric(f"{var_name}", f"{interpolated_z:.3f}")
             elif not df.empty:
-                st.warning("Coordinates outside data range")
+                st.write(f"{var_name}: Coordinates outside data range")
             else:
-                st.info("No data available for this sheet")
+                st.write(f"{var_name}: No data available")
         
         if i < 5:
             st.markdown("---")
 
 st.markdown("---")
-st.info(
+st.markdown(
     """
     **How to Use:**
     1. Adjust the global Y-coordinate input at the top to set the Y value for all plots.
     2. Use the "Distance upwind to shoreline" input to set X values for plots NA.3, NA.5, and NA.7.
     3. Use the "Distance inside town terrain" input to set X values for plots NA.4, NA.6, and NA.8.
-    4. View the interpolated value for each plot.
-    
-    Data is loaded directly from the local Excel file in the repository.
+    4. View the interpolated values in the table and for each plot.
     """
 )
